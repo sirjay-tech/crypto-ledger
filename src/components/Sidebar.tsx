@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useLedger } from '../context/LedgerContext';
 import { 
   LayoutDashboard, 
@@ -15,12 +15,25 @@ import {
   Sliders, 
   TrendingUp,
   Cpu,
-  Wallet
+  Wallet,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { ActiveView } from '../types';
 
 export const Sidebar: React.FC = () => {
   const { activeView, setActiveView, theme } = useLedger();
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('sidebar_collapsed') === 'true';
+  });
+
+  const toggleCollapse = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   const primaryNavItems: { value: ActiveView; label: string; icon: React.ReactNode }[] = [
     { value: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -47,53 +60,83 @@ export const Sidebar: React.FC = () => {
           key={item.value}
           id={`sidebar-btn-${item.value}`}
           onClick={() => setActiveView(item.value)}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer ${
+          title={item.label}
+          className={`w-full flex items-center rounded-lg text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer ${
+            isCollapsed 
+              ? 'justify-center p-3' 
+              : 'gap-3 px-3 py-2.5 border-l-2'
+          } ${
             isActive 
-              ? 'bg-cyan-500/10 border-l-2 border-cyan-400 text-cyan-400 glow-cyan' 
+              ? 'bg-cyan-500/10 text-cyan-400 glow-cyan ' + (isCollapsed ? 'border-r-2 border-cyan-400' : 'border-l-2 border-cyan-400')
               : theme === 'light'
                 ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-l-2 border-transparent'
                 : 'text-slate-400 hover:text-white hover:bg-[#1e293b]/50 border-l-2 border-transparent'
           }`}
         >
-          {item.icon}
-          <span>{item.label}</span>
+          <div className="shrink-0">{item.icon}</div>
+          {!isCollapsed && <span>{item.label}</span>}
         </button>
       );
     });
   };
 
   return (
-    <aside className={`hidden md:flex w-64 border-r flex-col justify-between shrink-0 z-20 h-full transition-colors duration-200 ${
-      theme === 'light' ? 'bg-white border-slate-205 border-slate-200' : 'bg-[#0b111e] border-slate-800'
-    }`}>
+    <aside className={`hidden md:flex flex-col justify-between shrink-0 z-20 h-full transition-all duration-300 ${
+      isCollapsed ? 'w-20' : 'w-64'
+    } ${
+      theme === 'light' ? 'bg-white border-slate-200' : 'bg-[#0b111e] border-slate-800'
+    } border-r`}>
       <div className="flex flex-col flex-1 overflow-y-auto">
-        {/* Visual Brand Title Block */}
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-950"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
-          </div>
-          <div>
-            <span className={`font-extrabold text-sm tracking-widest uppercase block transition-colors duration-200 ${
-              theme === 'light' ? 'text-slate-900' : 'text-white'
-            }`}>p2p-journal</span>
-            <span className="text-[9px] text-cyan-500 font-mono tracking-tight font-bold">INV TRACKER ENGINE</span>
-          </div>
+        {/* Toggle Collapse Button Row right at the top */}
+        <div className={`p-2 flex ${isCollapsed ? 'justify-center border-b border-dashed' : 'justify-end'} ${
+          theme === 'light' ? 'border-slate-200' : 'border-slate-800/60'
+        } z-30`}>
+          <button
+            onClick={toggleCollapse}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              theme === 'light' 
+                ? 'bg-slate-50 hover:bg-slate-200 text-slate-600' 
+                : 'bg-[#1e293b]/40 hover:bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+            title={isCollapsed ? "Expand Sidebar Menu" : "Minimize Sidebar Menu"}
+            id="sidebar-collapse-toggle-btn"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4 hover:scale-110 transition-transform" />
+            ) : (
+              <ChevronLeft className="w-4 h-4 hover:scale-110 transition-transform" />
+            )}
+          </button>
         </div>
 
+
+
         {/* Dynamic Navigation Rails */}
-        <div className="p-4 space-y-6">
+        <div className={`space-y-6 ${isCollapsed ? 'p-2' : 'p-4'}`}>
           <div>
-            <div className={`text-[10px] font-bold tracking-widest uppercase px-3 mb-2 ${theme === 'light' ? 'text-slate-400' : 'text-slate-600'}`}>Order Desk</div>
+            {isCollapsed ? (
+              <div className={`my-2 border-b border-dashed ${theme === 'light' ? 'border-slate-100' : 'border-slate-800/40'}`} />
+            ) : (
+              <div className={`text-[10px] font-bold tracking-widest uppercase px-3 mb-2 ${theme === 'light' ? 'text-slate-400' : 'text-slate-600'}`}>Order Desk</div>
+            )}
             <nav className="space-y-1">{renderNavGroup(primaryNavItems)}</nav>
           </div>
 
           <div>
-            <div className={`text-[10px] font-bold tracking-widest uppercase px-3 mb-2 ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>Ledger Registry</div>
+            {isCollapsed ? (
+              <div className={`my-2 border-b border-dashed ${theme === 'light' ? 'border-slate-100' : 'border-slate-800/40'}`} />
+            ) : (
+              <div className={`text-[10px] font-bold tracking-widest uppercase px-3 mb-2 ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>Ledger Registry</div>
+            )}
             <nav className="space-y-1">{renderNavGroup(ledgerNavItems)}</nav>
           </div>
 
           <div>
-            <div className={`text-[10px] font-bold tracking-widest uppercase px-3 mb-2 ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>System Controls</div>
+            {isCollapsed ? (
+              <div className={`my-2 border-b border-dashed ${theme === 'light' ? 'border-slate-100' : 'border-slate-800/40'}`} />
+            ) : (
+              <div className={`text-[10px] font-bold tracking-widest uppercase px-3 mb-2 ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>System Controls</div>
+            )}
             <nav className="space-y-1">{renderNavGroup(controlNavItems)}</nav>
           </div>
         </div>
@@ -103,40 +146,47 @@ export const Sidebar: React.FC = () => {
       <div className={`p-4 border-t transition-colors duration-200 ${
         theme === 'light' ? 'border-slate-200' : 'border-slate-800'
       }`}>
-        <div className={`flex items-center gap-3 p-2 border rounded-xl transition-colors duration-200 ${
-          theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#1e293b]/50 border-slate-800/80'
-        }`}>
-          <div className="w-8 h-8 rounded-full bg-cyan-600 font-bold flex items-center justify-center text-xs text-white uppercase select-none">
+        <div className={`flex items-center rounded-xl transition-all duration-200 ${
+          isCollapsed 
+            ? 'justify-center py-2' 
+            : 'gap-3 p-2 border ' + (theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#1e293b]/50 border-slate-800/80')
+        }`}
+        title="Alusine J. - Senior Architect">
+          <div className="w-8 h-8 rounded-full bg-cyan-600 font-bold flex items-center justify-center text-xs text-white uppercase select-none shrink-0 shadow-sm animate-pulse-slow">
             AJ
           </div>
-          <div>
-            <p className={`text-xs font-semibold ${theme === 'light' ? 'text-slate-800' : 'text-white'}`}>Alusine J.</p>
-            <p className="text-[9px] text-slate-500">Senior Architect</p>
-          </div>
+          {!isCollapsed && (
+            <div>
+              <p className={`text-xs font-semibold ${theme === 'light' ? 'text-slate-800' : 'text-white'}`}>Alusine J.</p>
+              <p className="text-[9px] text-slate-500">Senior Architect</p>
+            </div>
+          )}
         </div>
 
         {/* Network & Ledger Status Indicator at Bottom Left */}
-        <div className={`mt-3 pt-3 border-t border-dashed flex flex-col gap-2 px-1 ${
-          theme === 'light' ? 'border-slate-200' : 'border-slate-800'
-        }`}>
-          <div className="flex items-center gap-1.5 text-[10px] uppercase font-semibold select-none text-slate-500 font-mono">
-            <span>Network:</span>
-            <span className="text-emerald-500 font-extrabold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping shrink-0"></span>
-              Connected
-            </span>
-          </div>
+        {!isCollapsed && (
+          <div className={`mt-3 pt-3 border-t border-dashed flex flex-col gap-2 px-1 ${
+            theme === 'light' ? 'border-slate-200' : 'border-slate-800'
+          }`}>
+            <div className="flex items-center gap-1.5 text-[10px] uppercase font-semibold select-none text-slate-500 font-mono">
+              <span>Network:</span>
+              <span className="text-emerald-500 font-extrabold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping shrink-0"></span>
+                Connected
+              </span>
+            </div>
 
-          <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shrink-0"></span>
-            <span className="text-slate-400">Sandbox Ledger Active</span>
-          </div>
+            <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shrink-0"></span>
+              <span className="text-slate-400">Sandbox Ledger Active</span>
+            </div>
 
-          <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider text-slate-500">
-            <span>Version:</span>
-            <span className="text-slate-400 font-bold">v1.8.0</span>
+            <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider text-slate-500">
+              <span>Version:</span>
+              <span className="text-slate-400 font-bold">v1.8.0</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </aside>
   );

@@ -54,7 +54,7 @@ const INITIAL_COINS = ['USDT', 'BTC', 'ETH', 'SOL', 'USDC', 'ADA'];
 const DEFAULT_SETTINGS: AppSetting[] = [
   { key: 'API_STRICT_MODE', value: 'FALSE' },
   { key: 'MIN_PROFIT_MARGIN_PCT', value: '1.5' },
-  { key: 'ORANGE_MONEY_TRADING_CAP', value: '500000000' }, // 500,000,000 Leones
+  { key: 'ORANGE_MONEY_TRADING_CAP', value: '500000' }, // 500,000 New Leones
   { key: 'GAS_WEB_APP_URL', value: '' } // Users can set their actual Google Apps Script web app URL here!
 ];
 
@@ -100,14 +100,15 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const saved = localStorage.getItem('p2p_inventory');
     const parsed = saved ? JSON.parse(saved) : INITIAL_INVENTORY;
     return parsed.map((b: any) => {
-      if (b.coin === 'USDT' && b.price < 500) {
-        return { ...b, price: b.price * 1000, totalCost: b.totalCost * 1000 };
+      // Migrate any old large Leone numbers to new denominated Leones (divide by 1000)
+      if (b.coin === 'USDT' && b.price >= 1000) {
+        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
       }
-      if (b.coin === 'BTC' && b.price < 5000000) {
-        return { ...b, price: b.price * 1000, totalCost: b.totalCost * 1000 };
+      if (b.coin === 'BTC' && b.price >= 50000000) {
+        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
       }
-      if (b.coin === 'ETH' && b.price < 500000) {
-        return { ...b, price: b.price * 1000, totalCost: b.totalCost * 1000 };
+      if (b.coin === 'ETH' && b.price >= 5000000) {
+        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
       }
       return b;
     });
@@ -117,14 +118,15 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const saved = localStorage.getItem('p2p_buy_ledger');
     const parsed = saved ? JSON.parse(saved) : INITIAL_BUYS;
     return parsed.map((b: any) => {
-      if (b.coin === 'USDT' && b.price < 500) {
-        return { ...b, price: b.price * 1000, totalCost: b.totalCost * 1000 };
+      // Migrate any old large Leone numbers to new denominated Leones (divide by 1000)
+      if (b.coin === 'USDT' && b.price >= 1000) {
+        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
       }
-      if (b.coin === 'BTC' && b.price < 5000000) {
-        return { ...b, price: b.price * 1000, totalCost: b.totalCost * 1000 };
+      if (b.coin === 'BTC' && b.price >= 50000000) {
+        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
       }
-      if (b.coin === 'ETH' && b.price < 500000) {
-        return { ...b, price: b.price * 1000, totalCost: b.totalCost * 1000 };
+      if (b.coin === 'ETH' && b.price >= 5000000) {
+        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
       }
       return b;
     });
@@ -134,11 +136,9 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const saved = localStorage.getItem('p2p_sell_ledger');
     const parsed = saved ? JSON.parse(saved) : INITIAL_SELLS;
     return parsed.map((s: any) => {
-      if (s.price < 500) {
-        return { ...s, price: s.price * 1000, totalSale: s.totalSale * 1000, profit: s.profit * 1000 };
-      }
-      if (s.price < 500000 && !s.price.toString().startsWith('78500')) {
-        return { ...s, price: s.price * 1000, totalSale: s.totalSale * 1000, profit: s.profit * 1000 };
+      // Migrate any old large Leone numbers to new denominated Leones (divide by 1000)
+      if (s.price >= 1000) {
+        return { ...s, price: s.price / 1000, totalSale: s.totalSale / 1000, profit: s.profit / 1000 };
       }
       return s;
     });
@@ -148,8 +148,8 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const saved = localStorage.getItem('p2p_settings');
     const parsed = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
     return parsed.map((s: any) => {
-      if (s.key === 'ORANGE_MONEY_TRADING_CAP' && parseFloat(s.value) < 1000000) {
-        return { ...s, value: (parseFloat(s.value) * 1000).toString() };
+      if (s.key === 'ORANGE_MONEY_TRADING_CAP' && parseFloat(s.value) >= 1000000) {
+        return { ...s, value: (parseFloat(s.value) / 1000).toString() };
       }
       return s;
     });
@@ -166,9 +166,21 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!parsed.some((w: any) => w.name.toLowerCase() === 'orange money')) {
       parsed.unshift({ name: 'Orange Money', balance: 0 });
     }
+
+    // Explicitly reset the Orange Money balance to 0 once, as requested by user
+    if (!localStorage.getItem('p2p_orange_money_zeroed_v1')) {
+      parsed = parsed.map((w: any) => {
+        if (w.name.toLowerCase() === 'orange money') {
+          return { ...w, balance: 0 };
+        }
+        return w;
+      });
+      localStorage.setItem('p2p_orange_money_zeroed_v1', 'true');
+    }
+
     return parsed.map((w: any) => {
-      if (w.balance < 10000000 && w.balance > 0) {
-        return { ...w, balance: w.balance * 1000 };
+      if (w.balance >= 1000000) {
+        return { ...w, balance: w.balance / 1000 };
       }
       return w;
     });
@@ -632,7 +644,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addToast('Deposit amount must be greater than zero.', 'error');
       return;
     }
-    setWallets(prev => prev.map(w => w.name === name ? { ...w, balance: w.balance + amount } : w));
+    setWallets(prev => prev.map(w => w.name.toLowerCase() === name.toLowerCase() ? { ...w, balance: w.balance + amount } : w));
     addToast(`Successfully deposited Le ${amount.toLocaleString()} into ${name}.`, 'success');
   };
 
@@ -641,7 +653,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addToast('Withdrawal amount must be greater than zero.', 'error');
       return;
     }
-    const targetWallet = wallets.find(w => w.name === name);
+    const targetWallet = wallets.find(w => w.name.toLowerCase() === name.toLowerCase());
     if (!targetWallet) {
       addToast(`Wallet "${name}" not found.`, 'error');
       return;
@@ -650,7 +662,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addToast(`Insufficient funds in ${name}! Cannot withdraw Le ${amount.toLocaleString()} (Current Balance: Le ${targetWallet.balance.toLocaleString()}).`, 'error');
       return;
     }
-    setWallets(prev => prev.map(w => w.name === name ? { ...w, balance: w.balance - amount } : w));
+    setWallets(prev => prev.map(w => w.name.toLowerCase() === name.toLowerCase() ? { ...w, balance: w.balance - amount } : w));
     addToast(`Successfully withdrew Le ${amount.toLocaleString()} from ${name}.`, 'success');
   };
 

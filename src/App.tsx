@@ -46,30 +46,33 @@ const MainScreen: React.FC = () => {
   };
 
   return (
-    <div className={`flex h-screen overflow-hidden flex-col md:flex-row select-none transition-colors duration-200 ${
+    <div className={`flex h-screen overflow-hidden flex-col select-none transition-colors duration-200 ${
       theme === 'light' ? 'bg-slate-50 text-slate-900' : 'bg-[#090d16] text-slate-100'
     }`}>
       
-      {/* 1. Left hand columns sidebar: Sticky on Desktop, hidden on Mobile */}
-      <Sidebar />
+      {/* Universal Top Header: Spans full width, logo in the top left */}
+      <Header />
 
-      {/* 2. Main content viewport shell container */}
-      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden transition-colors duration-200 ${
-        theme === 'light' ? 'bg-slate-50' : 'bg-[#090d16]'
-      }`}>
+      {/* Sub-container containing Sidebar & content viewport */}
+      <div className="flex-1 flex min-w-0 overflow-hidden relative">
         
-        {/* Universal Top Header tracking logs & networking sync actions */}
-        <Header />
+        {/* 1. Left hand columns sidebar: Sticky on Desktop, hidden on Mobile */}
+        <Sidebar />
 
-        {/* Primary content area panel */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 pb-32 md:pb-8">
-          <div className="max-w-7xl mx-auto">
-            {renderViewContent()}
-          </div>
-        </main>
+        {/* 2. Main content viewport shell container */}
+        <div className={`flex-1 flex flex-col min-w-0 overflow-hidden transition-colors duration-200 ${
+          theme === 'light' ? 'bg-slate-50' : 'bg-[#090d16]'
+        }`}>
+          {/* Primary content area panel */}
+          <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 pb-32 md:pb-8">
+            <div className="max-w-7xl mx-auto">
+              {renderViewContent()}
+            </div>
+          </main>
 
-        {/* 3. Bottom Tabs navigation drawer: Sticky on Mobile, hidden on Desktop */}
-        <MobileNav />
+          {/* 3. Bottom Tabs navigation drawer: Sticky on Mobile, hidden on Desktop */}
+          <MobileNav />
+        </div>
 
       </div>
 
