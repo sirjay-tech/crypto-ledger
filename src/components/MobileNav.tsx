@@ -14,7 +14,8 @@ import {
   X, 
   FileCheck, 
   FileSpreadsheet, 
-  Sliders 
+  Sliders,
+  Wallet
 } from 'lucide-react';
 import { ActiveView } from '../types';
 
@@ -97,13 +98,13 @@ export const MobileNav: React.FC = () => {
               <div>
                 <span className={`font-extrabold text-sm tracking-widest uppercase block ${
                   theme === 'light' ? 'text-slate-800' : 'text-white'
-                }`}>Navigation Ledger</span>
+                }`}>p2p-journal Navigation</span>
                 <span className="text-[10px] text-cyan-500 font-mono font-bold">SUPPLEMENTARY REGISTRIES</span>
               </div>
               <button 
                 onClick={() => setIsDrawerOpen(false)}
                 className={`p-1 px-2.5 border rounded-lg ${
-                  theme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-slate-900 border-slate-700 text-slate-400'
+                  theme === 'light' ? 'bg-slate-50 border-slate-205 text-slate-500' : 'bg-slate-900 border-slate-700 text-slate-400'
                 }`}
               >
                 <X className="w-4 h-4 text-slate-200" />
@@ -111,6 +112,20 @@ export const MobileNav: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-3.5">
+              <button 
+                onClick={() => handleMoreItemClick('wallets')}
+                className={`w-full flex items-center gap-3.5 p-4 border rounded-xl text-left font-semibold text-xs uppercase cursor-pointer ${
+                  activeView === 'wallets' 
+                    ? 'border-cyan-500 text-cyan-500 bg-cyan-500/5' 
+                    : theme === 'light'
+                      ? 'border-slate-150 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      : 'border-slate-800 bg-slate-900/50 text-slate-300 hover:bg-slate-850'
+                }`}
+              >
+                <Wallet className="w-5 h-5 text-cyan-500" />
+                <span>Wallets & Cash Balance</span>
+              </button>
+
               <button 
                 onClick={() => handleMoreItemClick('buy-ledger')}
                 className={`w-full flex items-center gap-3.5 p-4 border rounded-xl text-left font-semibold text-xs uppercase cursor-pointer ${
@@ -135,7 +150,7 @@ export const MobileNav: React.FC = () => {
                       : 'border-slate-800 bg-slate-900/50 text-slate-300 hover:bg-slate-850'
                 }`}
               >
-                <FileSpreadsheet className="w-5 h-5 text-emerald-550 text-emerald-500" />
+                <FileSpreadsheet className="w-5 h-5 text-emerald-555 text-emerald-500" />
                 <span>Sell History Ledger Link</span>
               </button>
 
@@ -154,8 +169,22 @@ export const MobileNav: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-4 border-t border-slate-900 text-center text-[10px] text-slate-500 font-mono select-none">
-              Crypto P2P Ledger Core Client v1.8.0
+            <div className={`p-4 border-t text-center text-[10px] space-y-2 font-mono select-none ${
+              theme === 'light' ? 'border-slate-100' : 'border-slate-900/60'
+            }`}>
+              <div className="flex justify-center items-center gap-3 mb-1">
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                  <span className="text-emerald-500 font-bold">Connected</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse"></span>
+                  <span className="text-slate-400">Sandbox Active</span>
+                </div>
+              </div>
+              <div className="text-slate-500">
+                p2p-journal Core UI Client v1.8.0
+              </div>
             </div>
           </div>
         </div>

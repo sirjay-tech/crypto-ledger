@@ -15,6 +15,7 @@ import { SellView } from './components/SellView';
 import { BuyLedgerView } from './components/BuyLedgerView';
 import { SellLedgerView } from './components/SellLedgerView';
 import { SettingsView } from './components/SettingsView';
+import { WalletsView } from './components/WalletsView';
 import { BellRing, CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
 
 const MainScreen: React.FC = () => {
@@ -37,6 +38,8 @@ const MainScreen: React.FC = () => {
         return <SellLedgerView />;
       case 'settings':
         return <SettingsView />;
+      case 'wallets':
+        return <WalletsView />;
       default:
         return <DashboardView />;
     }

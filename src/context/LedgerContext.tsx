@@ -40,6 +40,10 @@ interface LedgerContextType {
   deleteSetting: (key: string) => void;
   syncWithGoogleSheets: () => Promise<void>;
   resetToDefault: () => void;
+  updateWalletBalance: (name: string, balance: number) => void;
+  addWallet: (name: string, initialBalance: number) => void;
+  depositToWallet: (name: string, amount: number) => void;
+  withdrawFromWallet: (name: string, amount: number) => void;
 }
 
 const LedgerContext = createContext<LedgerContextType | undefined>(undefined);
@@ -55,29 +59,14 @@ const DEFAULT_SETTINGS: AppSetting[] = [
 ];
 
 const INITIAL_WALLETS: Wallet[] = [
-  { name: 'Orange Money', balance: 120500000 }, // 120,500,000 Leones
-  { name: 'USDT Funding', balance: 65000000 },  // 65,000,000 Leones
-  { name: 'Apex OTC', balance: 35000000 }      // 35,000,000 Leones
+  { name: 'Orange Money', balance: 0 }
 ];
 
-const INITIAL_INVENTORY: InventoryBlock[] = [
-  { id: 'BLK-001', coin: 'USDT', quantity: 4500, price: 22500, totalCost: 101250000, date: '2026-06-01', notes: 'Inflow from Sierra P2P' }, // 22,500 price, 101,250,000 Leones
-  { id: 'BLK-002', coin: 'BTC', quantity: 0.12, price: 1350000000, totalCost: 162000000, date: '2026-06-03', notes: 'Direct OTC execution' },  // 1,350,000,000 BTC price, 162,000,000 Leones
-  { id: 'BLK-003', coin: 'ETH', quantity: 1.8, price: 72000000, totalCost: 129600000, date: '2026-06-05', notes: 'Liquidity pool withdrawal' }, // 72,000,000 ETH price, 129,600,000 Leones
-  { id: 'BLK-004', coin: 'USDT', quantity: 1200, price: 22600, totalCost: 27120000, date: '2026-06-08', notes: 'Mini batch pickup' }        // 22,600 price, 27,120,000 Leones
-];
+const INITIAL_INVENTORY: InventoryBlock[] = [];
 
-const INITIAL_BUYS: BuyTransaction[] = [
-  { id: 'TXN-B-101', blockId: 'BLK-001', coin: 'USDT', quantity: 4500, price: 22500, totalCost: 101250000, date: '2026-06-01', notes: 'Inflow from Sierra P2P' },
-  { id: 'TXN-B-102', blockId: 'BLK-002', coin: 'BTC', quantity: 0.12, price: 1350000000, totalCost: 162000000, date: '2026-06-03', notes: 'Direct OTC execution' },
-  { id: 'TXN-B-103', blockId: 'BLK-003', coin: 'ETH', quantity: 1.8, price: 72000000, totalCost: 129600000, date: '2026-06-05', notes: 'Liquidity pool withdrawal' },
-  { id: 'TXN-B-104', blockId: 'BLK-004', coin: 'USDT', quantity: 1200, price: 22600, totalCost: 27120000, date: '2026-06-08', notes: 'Mini batch pickup' }
-];
+const INITIAL_BUYS: BuyTransaction[] = [];
 
-const INITIAL_SELLS: SellTransaction[] = [
-  { id: 'TXN-S-201', blockId: 'BLK-001', quantity: 1500, price: 24700, totalSale: 37050000, profit: 3300000, date: '2026-06-04', wallet: 'Orange Money' }, // 24,700 price, 37,050,000 sale, 3,300,000 profit
-  { id: 'TXN-S-202', blockId: 'BLK-003', quantity: 0.5, price: 78500000, totalSale: 39250000, profit: 3250000, date: '2026-06-07', wallet: 'USDT Funding' }   // 78,500,000 price, 39,250,000 sale, 3,250,000 profit
-];
+const INITIAL_SELLS: SellTransaction[] = [];
 
 export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Navigation State
@@ -168,9 +157,17 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [wallets, setWallets] = useState<Wallet[]>(() => {
     const saved = localStorage.getItem('p2p_wallets');
-    const parsed = saved ? JSON.parse(saved) : INITIAL_WALLETS;
+    let parsed = saved ? JSON.parse(saved) : INITIAL_WALLETS;
+    // Purge unwanted legacy wallets automatically
+    parsed = parsed.filter((w: any) => 
+      w.name.toLowerCase() !== 'usdt funding' && 
+      w.name.toLowerCase() !== 'apex otc'
+    );
+    if (!parsed.some((w: any) => w.name.toLowerCase() === 'orange money')) {
+      parsed.unshift({ name: 'Orange Money', balance: 0 });
+    }
     return parsed.map((w: any) => {
-      if (w.balance < 10000000) {
+      if (w.balance < 10000000 && w.balance > 0) {
         return { ...w, balance: w.balance * 1000 };
       }
       return w;
@@ -599,14 +596,62 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const resetToDefault = () => {
-    if (window.confirm('Are you absolutely sure you want to revert all records to default sandbox values? This destroys custom edits.')) {
-      setInventory(INITIAL_INVENTORY);
-      setBuyLedger(INITIAL_BUYS);
-      setSellLedger(INITIAL_SELLS);
-      setWallets(INITIAL_WALLETS);
+    if (window.confirm('Are you absolutely sure you want to reset all records and wallet balances to 0? This action cannot be undone.')) {
+      setInventory([]);
+      setBuyLedger([]);
+      setSellLedger([]);
+      setWallets([
+        { name: 'Orange Money', balance: 0 }
+      ]);
       setSettings(DEFAULT_SETTINGS);
-      addToast('Database reset successfully to preseed files.', 'info');
+      addToast('Database reset successfully to 0.', 'success');
     }
+  };
+
+  const updateWalletBalance = (name: string, balance: number) => {
+    setWallets(prev => prev.map(w => w.name === name ? { ...w, balance } : w));
+    addToast(`Successfully updated ${name} balance to Le ${balance.toLocaleString()}`, 'success');
+  };
+
+  const addWallet = (name: string, initialBalance: number) => {
+    if (!name.trim()) {
+      addToast('Wallet name cannot be empty.', 'error');
+      return;
+    }
+    const exists = wallets.some(w => w.name.toLowerCase() === name.toLowerCase());
+    if (exists) {
+      addToast(`A wallet named "${name}" already exists.`, 'error');
+      return;
+    }
+    setWallets(prev => [...prev, { name: name.trim(), balance: initialBalance }]);
+    addToast(`Successfully created wallet "${name}" with balance Le ${initialBalance.toLocaleString()}`, 'success');
+  };
+
+  const depositToWallet = (name: string, amount: number) => {
+    if (amount <= 0) {
+      addToast('Deposit amount must be greater than zero.', 'error');
+      return;
+    }
+    setWallets(prev => prev.map(w => w.name === name ? { ...w, balance: w.balance + amount } : w));
+    addToast(`Successfully deposited Le ${amount.toLocaleString()} into ${name}.`, 'success');
+  };
+
+  const withdrawFromWallet = (name: string, amount: number) => {
+    if (amount <= 0) {
+      addToast('Withdrawal amount must be greater than zero.', 'error');
+      return;
+    }
+    const targetWallet = wallets.find(w => w.name === name);
+    if (!targetWallet) {
+      addToast(`Wallet "${name}" not found.`, 'error');
+      return;
+    }
+    if (targetWallet.balance < amount) {
+      addToast(`Insufficient funds in ${name}! Cannot withdraw Le ${amount.toLocaleString()} (Current Balance: Le ${targetWallet.balance.toLocaleString()}).`, 'error');
+      return;
+    }
+    setWallets(prev => prev.map(w => w.name === name ? { ...w, balance: w.balance - amount } : w));
+    addToast(`Successfully withdrew Le ${amount.toLocaleString()} from ${name}.`, 'success');
   };
 
   return (
@@ -634,7 +679,11 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updateSettingValue,
       deleteSetting,
       syncWithGoogleSheets,
-      resetToDefault
+      resetToDefault,
+      updateWalletBalance,
+      addWallet,
+      depositToWallet,
+      withdrawFromWallet
     }}>
       {children}
     </LedgerContext.Provider>

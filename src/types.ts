@@ -60,4 +60,5 @@ export type ActiveView =
   | 'inventory'
   | 'buy-ledger'
   | 'sell-ledger'
-  | 'settings';
+  | 'settings'
+  | 'wallets';

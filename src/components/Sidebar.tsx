@@ -14,7 +14,8 @@ import {
   FileSpreadsheet, 
   Sliders, 
   TrendingUp,
-  Cpu
+  Cpu,
+  Wallet
 } from 'lucide-react';
 import { ActiveView } from '../types';
 
@@ -23,6 +24,7 @@ export const Sidebar: React.FC = () => {
 
   const primaryNavItems: { value: ActiveView; label: string; icon: React.ReactNode }[] = [
     { value: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { value: 'wallets', label: 'Wallets & Cash', icon: <Wallet className="w-4 h-4" /> },
     { value: 'buy', label: 'Execute Buy', icon: <PlusCircle className="w-4 h-4" /> },
     { value: 'sell', label: 'Execute Sell', icon: <MinusCircle className="w-4 h-4" /> },
   ];
@@ -73,7 +75,7 @@ export const Sidebar: React.FC = () => {
           <div>
             <span className={`font-extrabold text-sm tracking-widest uppercase block transition-colors duration-200 ${
               theme === 'light' ? 'text-slate-900' : 'text-white'
-            }`}>P2P LEDGER</span>
+            }`}>p2p-journal</span>
             <span className="text-[9px] text-cyan-500 font-mono tracking-tight font-bold">INV TRACKER ENGINE</span>
           </div>
         </div>
@@ -102,7 +104,7 @@ export const Sidebar: React.FC = () => {
         theme === 'light' ? 'border-slate-200' : 'border-slate-800'
       }`}>
         <div className={`flex items-center gap-3 p-2 border rounded-xl transition-colors duration-200 ${
-          theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#1e293b]/50 border-slate-812 border-slate-800/80'
+          theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#1e293b]/50 border-slate-800/80'
         }`}>
           <div className="w-8 h-8 rounded-full bg-cyan-600 font-bold flex items-center justify-center text-xs text-white uppercase select-none">
             AJ
@@ -110,6 +112,29 @@ export const Sidebar: React.FC = () => {
           <div>
             <p className={`text-xs font-semibold ${theme === 'light' ? 'text-slate-800' : 'text-white'}`}>Alusine J.</p>
             <p className="text-[9px] text-slate-500">Senior Architect</p>
+          </div>
+        </div>
+
+        {/* Network & Ledger Status Indicator at Bottom Left */}
+        <div className={`mt-3 pt-3 border-t border-dashed flex flex-col gap-2 px-1 ${
+          theme === 'light' ? 'border-slate-200' : 'border-slate-800'
+        }`}>
+          <div className="flex items-center gap-1.5 text-[10px] uppercase font-semibold select-none text-slate-500 font-mono">
+            <span>Network:</span>
+            <span className="text-emerald-500 font-extrabold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping shrink-0"></span>
+              Connected
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shrink-0"></span>
+            <span className="text-slate-400">Sandbox Ledger Active</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider text-slate-500">
+            <span>Version:</span>
+            <span className="text-slate-400 font-bold">v1.8.0</span>
           </div>
         </div>
       </div>

@@ -8,7 +8,16 @@ import { useLedger } from '../context/LedgerContext';
 import { Sliders, PlusCircle, Trash2, HelpCircle } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
-  const { settings, updateSettingValue, deleteSetting, resetToDefault, theme, toggleTheme } = useLedger();
+  const { 
+    settings, 
+    updateSettingValue, 
+    deleteSetting, 
+    resetToDefault, 
+    theme, 
+    toggleTheme,
+    wallets,
+    updateWalletBalance
+  } = useLedger();
 
   // Input states
   const [newKey, setNewKey] = useState<string>('');
@@ -176,6 +185,68 @@ export const SettingsView: React.FC = () => {
             Once saved, clicking the "Sync database" action in the header will pull/push metrics in real-time. If undefined, local sandbox storage operates cleanly automatically.
           </p>
         </div>
+      </div>
+
+      {/* Wallet Balance Adjusters */}
+      <div className="glass p-5 md:p-8 rounded-2xl shadow-xl space-y-6">
+        <div>
+          <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+            <Sliders className="w-5 h-5 text-cyan-400 animate-pulse" />
+            <span>Liquidity Reservoirs Balance Adjuster</span>
+          </h3>
+          <p className="text-[10px] text-slate-400 font-mono mt-1">
+            💰 Tune reservation balances directly across default wallets to update settlement budgets instantly.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {wallets.map((w) => (
+            <div 
+              key={w.name} 
+              className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3 shadow-inner"
+            >
+              <div className="text-xs font-bold text-white uppercase tracking-wide">{w.name}</div>
+              <div className="text-[10px] text-slate-400 font-mono">
+                Current: <span className="font-bold text-cyan-400">Le {w.balance.toLocaleString()}</span>
+              </div>
+              <div className="space-y-1">
+                <input
+                  type="number"
+                  placeholder="Set Leones balance"
+                  defaultValue={w.balance || 0}
+                  onBlur={(e) => {
+                    const priceVal = parseFloat(e.target.value);
+                    if (!isNaN(priceVal) && priceVal >= 0) {
+                      updateWalletBalance(w.name, priceVal);
+                    }
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 outline-none font-mono font-bold"
+                />
+                <span className="text-[8px] text-slate-500 block leading-tight">Blur input / click outside to update</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Reset Operations */}
+      <div className="glass p-5 md:p-8 rounded-2xl border border-rose-500/10 shadow-xl space-y-4">
+        <div>
+          <h3 className="text-sm font-black text-rose-500 uppercase tracking-wider flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-rose-500" />
+            <span>Dangerous Operations</span>
+          </h3>
+          <p className="text-[10px] text-slate-400 font-mono mt-1">
+            ⚠️ Destroy all local journal records, active holdings blocks, and set wallet balances back to 0.
+          </p>
+        </div>
+
+        <button
+          onClick={resetToDefault}
+          className="bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 border border-rose-500/30 text-rose-400 font-bold py-3 px-5 rounded-xl text-xs uppercase tracking-wider select-none cursor-pointer transition-all duration-300 w-full md:w-auto"
+        >
+          Reset Database to 0 Default
+        </button>
       </div>
 
     </div>

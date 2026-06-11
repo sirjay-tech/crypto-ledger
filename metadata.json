@@ -1,5 +1,5 @@
 {
-  "name": "P2P Crypto Ledger Engine",
+  "name": "p2p-journal",
   "description": "An ultra-responsive P2P Crypto Inventory Tracking and Financial Ledger application for managing token blocks and trade positions.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
