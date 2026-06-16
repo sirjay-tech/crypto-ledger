@@ -35,6 +35,8 @@ export const WalletsView: React.FC = () => {
   // { walletName: string, type: 'deposit' | 'withdraw' } | null
   const [activeTx, setActiveTx] = useState<{ walletName: string; type: 'deposit' | 'withdraw' } | null>(null);
   const [txAmount, setTxAmount] = useState('');
+  const [refId, setRefId] = useState('');
+  const [withdrawalReason, setWithdrawalReason] = useState('');
 
   // Total Liquidity Across All Reservoirs
   const totalLiquidity = wallets.reduce((sum, w) => sum + w.balance, 0);
@@ -59,13 +61,15 @@ export const WalletsView: React.FC = () => {
     }
 
     if (activeTx.type === 'deposit') {
-      depositToWallet(activeTx.walletName, amountVal);
+      depositToWallet(activeTx.walletName, amountVal, refId);
     } else {
-      withdrawFromWallet(activeTx.walletName, amountVal);
+      withdrawFromWallet(activeTx.walletName, amountVal, withdrawalReason);
     }
 
     // Reset TX drawer
     setTxAmount('');
+    setRefId('');
+    setWithdrawalReason('');
     setActiveTx(null);
   };
 
@@ -239,6 +243,8 @@ export const WalletsView: React.FC = () => {
                         onClick={() => {
                           setActiveTx(null);
                           setTxAmount('');
+                          setRefId('');
+                          setWithdrawalReason('');
                         }}
                         className="text-slate-500 hover:text-slate-300 p-0.5 cursor-pointer"
                       >
@@ -261,12 +267,37 @@ export const WalletsView: React.FC = () => {
                       <span className="absolute left-3 top-2.5 text-slate-500 text-[10px] font-mono leading-none">Le</span>
                     </div>
 
+                    {activeTx.type === 'deposit' ? (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Reference ID (Optional)"
+                          value={refId}
+                          onChange={(e) => setRefId(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-[10px] text-white placeholder-slate-600 focus:ring-1 focus:ring-cyan-500 outline-none font-bold"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          placeholder="Reason for Withdrawal (Required)"
+                          value={withdrawalReason}
+                          onChange={(e) => setWithdrawalReason(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-[10px] text-white placeholder-slate-600 focus:ring-1 focus:ring-cyan-500 outline-none font-bold"
+                        />
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => {
                           setActiveTx(null);
                           setTxAmount('');
+                          setRefId('');
+                          setWithdrawalReason('');
                         }}
                         className={`py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider cursor-pointer text-center duration-200 ${
                           theme === 'light'

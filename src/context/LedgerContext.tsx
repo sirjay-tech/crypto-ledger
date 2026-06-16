@@ -11,13 +11,17 @@ import {
   Wallet, 
   AppSetting, 
   LedgerMetrics,
-  ActiveView
+  ActiveView,
+  DepositRecord,
+  WithdrawalRecord
 } from '../types';
 
 interface LedgerContextType {
   inventory: InventoryBlock[];
   buyLedger: BuyTransaction[];
   sellLedger: SellTransaction[];
+  depositLedger: DepositRecord[];
+  withdrawalLedger: WithdrawalRecord[];
   settings: AppSetting[];
   wallets: Wallet[];
   metrics: LedgerMetrics;
@@ -42,8 +46,8 @@ interface LedgerContextType {
   resetToDefault: () => void;
   updateWalletBalance: (name: string, balance: number) => void;
   addWallet: (name: string, initialBalance: number) => void;
-  depositToWallet: (name: string, amount: number) => void;
-  withdrawFromWallet: (name: string, amount: number) => void;
+  depositToWallet: (name: string, amount: number, referenceId?: string) => void;
+  withdrawFromWallet: (name: string, amount: number, reasonForWithdrawal?: string) => void;
 }
 
 const LedgerContext = createContext<LedgerContextType | undefined>(undefined);
@@ -144,6 +148,16 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   });
 
+  const [depositLedger, setDepositLedger] = useState<DepositRecord[]>(() => {
+    const saved = localStorage.getItem('p2p_deposit_ledger');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [withdrawalLedger, setWithdrawalLedger] = useState<WithdrawalRecord[]>(() => {
+    const saved = localStorage.getItem('p2p_withdrawal_ledger');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [settings, setSettings] = useState<AppSetting[]>(() => {
     const saved = localStorage.getItem('p2p_settings');
     const parsed = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
@@ -204,6 +218,14 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     localStorage.setItem('p2p_sell_ledger', JSON.stringify(sellLedger));
   }, [sellLedger]);
+
+  useEffect(() => {
+    localStorage.setItem('p2p_deposit_ledger', JSON.stringify(depositLedger));
+  }, [depositLedger]);
+
+  useEffect(() => {
+    localStorage.setItem('p2p_withdrawal_ledger', JSON.stringify(withdrawalLedger));
+  }, [withdrawalLedger]);
 
   useEffect(() => {
     localStorage.setItem('p2p_settings', JSON.stringify(settings));
@@ -355,7 +377,8 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       price,
       totalCost,
       date: dateStamp,
-      notes: notes || `Local allocation entry`
+      notes: notes || `Local allocation entry`,
+      fundingSource: walletName
     };
 
     // Update wallet balance
@@ -440,7 +463,8 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       totalSale,
       profit,
       date: dateStamp,
-      wallet: walletName
+      wallet: walletName,
+      coin: block.coin
     };
 
     // Apply gross sale inflow to target receipt wallet
@@ -612,6 +636,8 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setInventory([]);
       setBuyLedger([]);
       setSellLedger([]);
+      setDepositLedger([]);
+      setWithdrawalLedger([]);
       setWallets([
         { name: 'Orange Money', balance: 0 }
       ]);
@@ -639,16 +665,26 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     addToast(`Successfully created wallet "${name}" with balance Le ${initialBalance.toLocaleString()}`, 'success');
   };
 
-  const depositToWallet = (name: string, amount: number) => {
+  const depositToWallet = (name: string, amount: number, referenceId?: string) => {
     if (amount <= 0) {
       addToast('Deposit amount must be greater than zero.', 'error');
       return;
     }
     setWallets(prev => prev.map(w => w.name.toLowerCase() === name.toLowerCase() ? { ...w, balance: w.balance + amount } : w));
+    
+    const newDep: DepositRecord = {
+      id: `DEP-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      amountLeones: amount,
+      paymentMethod: name,
+      referenceId: referenceId || 'N/A'
+    };
+    setDepositLedger(prev => [newDep, ...prev]);
+
     addToast(`Successfully deposited Le ${amount.toLocaleString()} into ${name}.`, 'success');
   };
 
-  const withdrawFromWallet = (name: string, amount: number) => {
+  const withdrawFromWallet = (name: string, amount: number, reasonForWithdrawal?: string) => {
     if (amount <= 0) {
       addToast('Withdrawal amount must be greater than zero.', 'error');
       return;
@@ -663,6 +699,16 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
     setWallets(prev => prev.map(w => w.name.toLowerCase() === name.toLowerCase() ? { ...w, balance: w.balance - amount } : w));
+    
+    const newWith: WithdrawalRecord = {
+      id: `WTH-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      amountLeones: amount,
+      paymentMethod: name,
+      reasonForWithdrawal: reasonForWithdrawal || 'Manual withdrawal'
+    };
+    setWithdrawalLedger(prev => [newWith, ...prev]);
+
     addToast(`Successfully withdrew Le ${amount.toLocaleString()} from ${name}.`, 'success');
   };
 
@@ -671,6 +717,8 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       inventory,
       buyLedger,
       sellLedger,
+      depositLedger,
+      withdrawalLedger,
       settings,
       wallets,
       metrics,

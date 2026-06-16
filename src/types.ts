@@ -12,6 +12,7 @@ export interface BuyTransaction {
   totalCost: number;
   date: string; // ISO date string (YYYY-MM-DD or full ISO)
   notes: string;
+  fundingSource?: string; // e.g., "Orange Money"
 }
 
 export interface SellTransaction {
@@ -23,6 +24,38 @@ export interface SellTransaction {
   profit: number; // calculated as quantity * (sellPrice - originalBuyPrice)
   date: string;
   wallet: string; // e.g. "Orange Money"
+  coin?: string; // e.g. "USDT"
+}
+
+export interface BaseTransaction {
+  id: string;
+  timestamp: string; // ISO Date String
+  amountLeones: number;
+}
+
+export interface BuyRecord extends BaseTransaction {
+  coinType: 'USDT' | 'BTC' | 'ETH' | string;
+  quantity: number;
+  unitPrice: number;
+  fundingSource: string; // e.g., "Orange Money"
+}
+
+export interface SellRecord extends BaseTransaction {
+  coinType: 'USDT' | 'BTC' | 'ETH' | string;
+  quantity: number;
+  unitPrice: number;
+  realizedGain: number;
+  destinationWallet: string; // e.g., "Orange Money"
+}
+
+export interface DepositRecord extends BaseTransaction {
+  paymentMethod: string; // e.g., "Orange Money"
+  referenceId?: string;
+}
+
+export interface WithdrawalRecord extends BaseTransaction {
+  paymentMethod: string;
+  reasonForWithdrawal: string; // REQUIRED field to log why funds were pulled
 }
 
 export interface InventoryBlock {
