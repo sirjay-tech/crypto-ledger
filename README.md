@@ -1,20 +1,26 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Crypto P2P Inventory Engine & Journal 📊✈️
 
-# Run and deploy your AI Studio app
+A cutting-edge, high-end P2P Transactional Journal and Ledger Web Application. This platform acts as a high-fidelity frontend cockpit designed to track inventory allocations, execute rapid buy/sell orders, and monitor real-time wallet positions seamlessly synced with a cloud ledger backend.
 
-This contains everything you need to run your app locally.
+![Latest Dashboard Preview](watermarked_img_17488641298796260948.png)
 
-View your app in AI Studio: https://ai.studio/apps/92535f0b-6aca-4e7b-bbe4-a928d6aae302
+---
 
-## Run Locally
+### 🌟 Key Features
 
-**Prerequisites:**  Node.js
+*   ⚡ **Unified Transactional Cockpit:** Run buy and sell operations on a single screen with real-time feedback. No page bouncing required.
+*   💰 **Orange Money Tracking:** Built-in currency support for local wallet tracking (formatted in Leones `Le`).
+*   🎯 **Smart Profit Calculations:** Instant live calculation cards highlighting projected Gross Cash Inflows and Net Realized Profits before executing a trade.
+*   📦 **Asset Block Deck Ledger:** View active inventory grouped by coin types, average unit costs, and purchase dates instead of cluttered, static tables.
+*   📉 **Real-Time Operational Feed:** An interactive lower audit panel logging your last 10 immediate actions (Buys, Sells, Merges) with clean status badges.
+*   🌙 **Cyberpunk Dark Theme:** Premium dark mode skin utilizing a deep slate background accented with high-contrast Cyan, Amber, and Emerald accents.
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 🛠 Tech Stack & Architecture
+
+*   **Frontend Core:** React 19 + TypeScript (Strict typing for tracking volume blocks)
+*   **Build Utility:** Vite (Ultra-fast local HMR and compile speeds)
+*   **Styling Engine:** Tailwind CSS 
+*   **State Architecture:** React Context API + Custom Hooks managing reactive UI states
+*   **Deployment:** Netlify Continuous Deployment (CI/CD) via GitHub
