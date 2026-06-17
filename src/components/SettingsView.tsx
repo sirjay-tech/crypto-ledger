@@ -5,9 +5,11 @@
 
 import React, { useState } from 'react';
 import { useLedger } from '../context/LedgerContext';
-import { Sliders, PlusCircle, Trash2, HelpCircle } from 'lucide-react';
+import { Sliders, PlusCircle, Trash2, HelpCircle, LogOut, Cloud, ShieldAlert } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export const SettingsView: React.FC = () => {
+  const { currentUser, logOut } = useAuth();
   const { 
     settings, 
     updateSettingValue, 
@@ -228,6 +230,37 @@ export const SettingsView: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Cloud Session Control Card */}
+      {currentUser && (
+        <div className="glass p-5 md:p-8 rounded-2xl border border-cyan-500/10 shadow-xl space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-black text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                <Cloud className="w-5 h-5 text-cyan-400" />
+                <span>Encrypted Cloud Session</span>
+              </h3>
+              <p className="text-[10px] text-slate-400 font-mono">
+                Synced User Identity: <span className="text-slate-200 font-bold">{currentUser.email}</span>
+              </p>
+              <p className="text-[9px] text-slate-500 font-mono">
+                UID Ident: <span className="text-slate-400 font-bold">{currentUser.uid}</span>
+              </p>
+            </div>
+            
+            <button
+              onClick={() => {
+                logOut();
+              }}
+              className="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-slate-950 font-black rounded-xl text-[10px] uppercase tracking-widest cursor-pointer transition-all flex items-center gap-2"
+              title="Disconnect Active Cloud Sync Session"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>SECURE LOG OUT</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Reset Operations */}
       <div className="glass p-5 md:p-8 rounded-2xl border border-rose-500/10 shadow-xl space-y-4">

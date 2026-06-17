@@ -15,6 +15,8 @@ import {
   DepositRecord,
   WithdrawalRecord
 } from '../types';
+import { useAuth } from './AuthContext';
+import { useP2PJournal } from '../hooks/useP2PJournal';
 
 interface LedgerContextType {
   inventory: InventoryBlock[];
@@ -73,6 +75,9 @@ const INITIAL_BUYS: BuyTransaction[] = [];
 const INITIAL_SELLS: SellTransaction[] = [];
 
 export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useAuth();
+  const fb = useP2PJournal(currentUser?.uid);
+
   // Navigation State
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
 
@@ -203,6 +208,27 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
 
+  // Active state delegates: chooses between Firestore and standard LocalStorage fallback
+  const activeInventory = currentUser ? fb.inventory : inventory;
+  const activeBuyLedger = currentUser ? fb.buyHistory : buyLedger;
+  const activeSellLedger = currentUser ? fb.sellHistory : sellLedger;
+  const activeDepositLedger = currentUser ? fb.depositLedger : depositLedger;
+  const activeWithdrawalLedger = currentUser ? fb.withdrawalLedger : withdrawalLedger;
+  const activeWallets = currentUser ? fb.wallets : wallets;
+
+  // Auto bootstrap local storage data to Cloud Firestore if Cloud Firestore is completely empty and currentUser recently logged in!
+  useEffect(() => {
+    if (currentUser && !fb.loading) {
+      const alreadySynced = localStorage.getItem(`p2p_bulk_synced_${currentUser.uid}`);
+      if (!alreadySynced && fb.buyHistory.length === 0 && fb.sellHistory.length === 0 && fb.depositLedger.length === 0 && fb.withdrawalLedger.length === 0) {
+        fb.bulkUploadToCloud(buyLedger, sellLedger, depositLedger, withdrawalLedger, inventory, wallets).then(() => {
+          localStorage.setItem(`p2p_bulk_synced_${currentUser.uid}`, 'true');
+          addToast('Your existing offline records have been seamlessly migrated to the Cloud secure database!', 'success');
+        });
+      }
+    }
+  }, [currentUser, fb.loading]);
+
   // Supported coins checklist
   const supportedCoins = INITIAL_COINS;
 
@@ -261,13 +287,13 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Recalculately dynamic metrics whenever inventory, sell ledger, or wallets transform
   useEffect(() => {
-    const totalInventoryValue = inventory.reduce((sum, b) => sum + (b.quantity * b.price), 0);
-    const realizedProfit = sellLedger.reduce((sum, s) => sum + s.profit, 0);
-    const activeBlocks = inventory.filter(b => b.quantity > 0).length;
+    const totalInventoryValue = activeInventory.reduce((sum, b) => sum + (b.quantity * b.price), 0);
+    const realizedProfit = activeSellLedger.reduce((sum, s) => sum + s.profit, 0);
+    const activeBlocks = activeInventory.filter(b => b.quantity > 0).length;
 
     // Aggregate holdings per coin
     const holdingsMap: { [coin: string]: number } = {};
-    inventory.forEach(block => {
+    activeInventory.forEach(block => {
       if (block.quantity > 0) {
         holdingsMap[block.coin] = (holdingsMap[block.coin] || 0) + block.quantity;
       }
@@ -278,10 +304,10 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       totalInventoryValue,
       realizedProfit,
       activeBlocks,
-      wallets,
+      wallets: activeWallets,
       holdings
     });
-  }, [inventory, sellLedger, wallets]);
+  }, [activeInventory, activeSellLedger, activeWallets]);
 
   /**
    * Helper to execute requests against a real Google Apps Script web app URL if specified
@@ -326,7 +352,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const totalCost = quantity * price;
 
     // Check balance in funding source wallet
-    const fundingWallet = wallets.find(w => w.name === walletName);
+    const fundingWallet = activeWallets.find(w => w.name === walletName);
     if (!fundingWallet) {
       addToast(`Target settlement wallet "${walletName}" was not found.`, 'error');
       setIsLoading(false);
@@ -352,9 +378,9 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return true;
     }
 
-    // Local Fallback Execution
-    const newBlockId = `BLK-${(1001 + inventory.length).toString()}`;
-    const newTxId = `TXN-B-${(100 + buyLedger.length + 1).toString()}`;
+    // Local/Cloud Execution
+    const newBlockId = `BLK-${(1001 + activeInventory.length).toString()}`;
+    const newTxId = `TXN-B-${(100 + activeBuyLedger.length + 1).toString()}`;
     const dateStamp = new Date().toISOString().split('T')[0];
 
     // Create block
@@ -382,16 +408,24 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     // Update wallet balance
-    const updatedWallets = wallets.map(w => {
+    const updatedWallets = activeWallets.map(w => {
       if (w.name === walletName) {
         return { ...w, balance: w.balance - totalCost };
       }
       return w;
     });
 
-    setInventory(prev => [newBlock, ...prev]);
-    setBuyLedger(prev => [newBuyTx, ...prev]);
-    setWallets(updatedWallets);
+    if (currentUser) {
+      await fb.saveInventoryBlock(newBlock);
+      await fb.saveBuyRecord(newBuyTx);
+      for (const w of updatedWallets) {
+        await fb.saveWallet(w);
+      }
+    } else {
+      setInventory(prev => [newBlock, ...prev]);
+      setBuyLedger(prev => [newBuyTx, ...prev]);
+      setWallets(updatedWallets);
+    }
 
     addToast(`Successfully instantiated Block ${newBlockId}. Spent Le ${totalCost.toLocaleString()}.`, 'success');
     setIsLoading(false);
@@ -407,7 +441,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   ): Promise<boolean> => {
     setIsLoading(true);
 
-    const block = inventory.find(b => b.id === blockId);
+    const block = activeInventory.find(b => b.id === blockId);
     if (!block) {
       addToast(`Asset block ID "${blockId}" does not exist.`, 'error');
       setIsLoading(false);
@@ -436,12 +470,12 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return true;
     }
 
-    // Local Fallback Execution
+    // Local/Cloud Execution
     const dateStamp = new Date().toISOString().split('T')[0];
-    const newTxId = `TXN-S-${(200 + sellLedger.length + 1).toString()}`;
+    const newTxId = `TXN-S-${(200 + activeSellLedger.length + 1).toString()}`;
 
     // Update block inventory remaining
-    const updatedInventory = inventory.map(b => {
+    const updatedInventory = activeInventory.map(b => {
       if (b.id === blockId) {
         const remainingQty = b.quantity - sellQty;
         return {
@@ -468,16 +502,30 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     // Apply gross sale inflow to target receipt wallet
-    const updatedWallets = wallets.map(w => {
+    const updatedWallets = activeWallets.map(w => {
       if (w.name === walletName) {
         return { ...w, balance: w.balance + totalSale };
       }
       return w;
     });
 
-    setInventory(updatedInventory);
-    setSellLedger(prev => [newSellTx, ...prev]);
-    setWallets(updatedWallets);
+    if (currentUser) {
+      const blockToUpdate = updatedInventory.find(b => b.id === blockId);
+      if (blockToUpdate) {
+        await fb.saveInventoryBlock(blockToUpdate);
+      } else {
+        await fb.deleteInventoryBlock(blockId);
+      }
+
+      await fb.saveSellRecord(newSellTx);
+      for (const w of updatedWallets) {
+        await fb.saveWallet(w);
+      }
+    } else {
+      setInventory(updatedInventory);
+      setSellLedger(prev => [newSellTx, ...prev]);
+      setWallets(updatedWallets);
+    }
 
     addToast(`Sale realized! Gained Le ${totalSale.toLocaleString()} (Net Profit: Le ${profit.toLocaleString()}).`, 'success');
     setIsLoading(false);
@@ -494,7 +542,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsLoading(true);
     
     // Validate that all are the exact same coin type
-    const matches = inventory.filter(b => blockIds.includes(b.id));
+    const matches = activeInventory.filter(b => blockIds.includes(b.id));
     if (matches.length !== blockIds.length) {
       addToast('Some selected block nodes could not be verified in memory.', 'error');
       setIsLoading(false);
@@ -539,10 +587,17 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     // Update active state list
-    setInventory(prev => [
-      newMergedBlock,
-      ...prev.filter(b => !blockIds.includes(b.id))
-    ]);
+    if (currentUser) {
+      await fb.saveInventoryBlock(newMergedBlock);
+      for (const bid of blockIds) {
+        await fb.deleteInventoryBlock(bid);
+      }
+    } else {
+      setInventory(prev => [
+        newMergedBlock,
+        ...prev.filter(b => !blockIds.includes(b.id))
+      ]);
+    }
 
     addToast(`Consolidated ${blockIds.length} blocks of ${coinType} into single Block ${mergedBlockId} (${totalRemainingQty.toLocaleString()} units).`, 'success');
     setIsLoading(false);
@@ -631,47 +686,62 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const resetToDefault = () => {
+  const resetToDefault = async () => {
     if (window.confirm('Are you absolutely sure you want to reset all records and wallet balances to 0? This action cannot be undone.')) {
-      setInventory([]);
-      setBuyLedger([]);
-      setSellLedger([]);
-      setDepositLedger([]);
-      setWithdrawalLedger([]);
-      setWallets([
-        { name: 'Orange Money', balance: 0 }
-      ]);
-      setSettings(DEFAULT_SETTINGS);
-      addToast('Database reset successfully to 0.', 'success');
+      if (currentUser) {
+        await fb.clearAllData();
+        await fb.saveWallet({ name: 'Orange Money', balance: 0 });
+      } else {
+        setInventory([]);
+        setBuyLedger([]);
+        setSellLedger([]);
+        setDepositLedger([]);
+        setWithdrawalLedger([]);
+        setWallets([
+          { name: 'Orange Money', balance: 0 }
+        ]);
+        setSettings(DEFAULT_SETTINGS);
+      }
+      addToast('Database reset successfully.', 'success');
     }
   };
 
-  const updateWalletBalance = (name: string, balance: number) => {
-    setWallets(prev => prev.map(w => w.name === name ? { ...w, balance } : w));
+  const updateWalletBalance = async (name: string, balance: number) => {
+    if (currentUser) {
+      await fb.saveWallet({ name, balance });
+    } else {
+      setWallets(prev => prev.map(w => w.name === name ? { ...w, balance } : w));
+    }
     addToast(`Successfully updated ${name} balance to Le ${balance.toLocaleString()}`, 'success');
   };
 
-  const addWallet = (name: string, initialBalance: number) => {
+  const addWallet = async (name: string, initialBalance: number) => {
     if (!name.trim()) {
       addToast('Wallet name cannot be empty.', 'error');
       return;
     }
-    const exists = wallets.some(w => w.name.toLowerCase() === name.toLowerCase());
+    const exists = activeWallets.some(w => w.name.toLowerCase() === name.toLowerCase());
     if (exists) {
       addToast(`A wallet named "${name}" already exists.`, 'error');
       return;
     }
-    setWallets(prev => [...prev, { name: name.trim(), balance: initialBalance }]);
+    if (currentUser) {
+      await fb.saveWallet({ name: name.trim(), balance: initialBalance });
+    } else {
+      setWallets(prev => [...prev, { name: name.trim(), balance: initialBalance }]);
+    }
     addToast(`Successfully created wallet "${name}" with balance Le ${initialBalance.toLocaleString()}`, 'success');
   };
 
-  const depositToWallet = (name: string, amount: number, referenceId?: string) => {
+  const depositToWallet = async (name: string, amount: number, referenceId?: string) => {
     if (amount <= 0) {
       addToast('Deposit amount must be greater than zero.', 'error');
       return;
     }
-    setWallets(prev => prev.map(w => w.name.toLowerCase() === name.toLowerCase() ? { ...w, balance: w.balance + amount } : w));
-    
+
+    const walletToUpdate = activeWallets.find(w => w.name.toLowerCase() === name.toLowerCase());
+    const finalBalance = (walletToUpdate?.balance || 0) + amount;
+
     const newDep: DepositRecord = {
       id: `DEP-${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -679,17 +749,24 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       paymentMethod: name,
       referenceId: referenceId || 'N/A'
     };
-    setDepositLedger(prev => [newDep, ...prev]);
+
+    if (currentUser) {
+      await fb.saveWallet({ name: walletToUpdate?.name || name, balance: finalBalance });
+      await fb.saveDepositRecord(newDep);
+    } else {
+      setWallets(prev => prev.map(w => w.name.toLowerCase() === name.toLowerCase() ? { ...w, balance: w.balance + amount } : w));
+      setDepositLedger(prev => [newDep, ...prev]);
+    }
 
     addToast(`Successfully deposited Le ${amount.toLocaleString()} into ${name}.`, 'success');
   };
 
-  const withdrawFromWallet = (name: string, amount: number, reasonForWithdrawal?: string) => {
+  const withdrawFromWallet = async (name: string, amount: number, reasonForWithdrawal?: string) => {
     if (amount <= 0) {
       addToast('Withdrawal amount must be greater than zero.', 'error');
       return;
     }
-    const targetWallet = wallets.find(w => w.name.toLowerCase() === name.toLowerCase());
+    const targetWallet = activeWallets.find(w => w.name.toLowerCase() === name.toLowerCase());
     if (!targetWallet) {
       addToast(`Wallet "${name}" not found.`, 'error');
       return;
@@ -698,8 +775,9 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addToast(`Insufficient funds in ${name}! Cannot withdraw Le ${amount.toLocaleString()} (Current Balance: Le ${targetWallet.balance.toLocaleString()}).`, 'error');
       return;
     }
-    setWallets(prev => prev.map(w => w.name.toLowerCase() === name.toLowerCase() ? { ...w, balance: w.balance - amount } : w));
-    
+
+    const finalBalance = targetWallet.balance - amount;
+
     const newWith: WithdrawalRecord = {
       id: `WTH-${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -707,7 +785,14 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       paymentMethod: name,
       reasonForWithdrawal: reasonForWithdrawal || 'Manual withdrawal'
     };
-    setWithdrawalLedger(prev => [newWith, ...prev]);
+
+    if (currentUser) {
+      await fb.saveWallet({ name: targetWallet.name, balance: finalBalance });
+      await fb.saveWithdrawalRecord(newWith);
+    } else {
+      setWallets(prev => prev.map(w => w.name.toLowerCase() === name.toLowerCase() ? { ...w, balance: w.balance - amount } : w));
+      setWithdrawalLedger(prev => [newWith, ...prev]);
+    }
 
     addToast(`Successfully withdrew Le ${amount.toLocaleString()} from ${name}.`, 'success');
   };

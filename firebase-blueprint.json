@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "InventoryBlock": {
+      "title": "InventoryBlock",
+      "description": "Representing a single coin inventory purchase allocation block",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "coin": { "type": "string" },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" },
+        "walletName": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "coin", "quantity", "price", "walletName", "date"]
+    },
+    "BuyTransaction": {
+      "title": "BuyTransaction",
+      "description": "Buy ledger transaction audit record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "coin": { "type": "string" },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "walletName": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "coin", "quantity", "price", "totalCost", "walletName", "date"]
+    },
+    "SellTransaction": {
+      "title": "SellTransaction",
+      "description": "Sell ledger transaction audit record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "blockId": { "type": "string" },
+        "coin": { "type": "string" },
+        "quantity": { "type": "number" },
+        "buyPrice": { "type": "number" },
+        "sellPrice": { "type": "number" },
+        "profit": { "type": "number" },
+        "walletName": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "blockId", "coin", "quantity", "buyPrice", "sellPrice", "profit", "walletName", "date"]
+    },
+    "DepositRecord": {
+      "title": "DepositRecord",
+      "description": "Record of standard seed or deposit wallet funding",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "referenceId": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "amount", "paymentMethod", "referenceId"]
+    },
+    "WithdrawalRecord": {
+      "title": "WithdrawalRecord",
+      "description": "Record of system seed or drawer withdrawal operations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "reasonForWithdrawal": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "amount", "paymentMethod", "reasonForWithdrawal"]
+    },
+    "Wallet": {
+      "title": "Wallet",
+      "description": "A payment channel or liquid drawer holding balances",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "balance": { "type": "number" }
+      },
+      "required": ["name", "balance"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}/inventory/{id}": {
+      "schema": { "$ref": "#/entities/InventoryBlock" },
+      "description": "Inventory acquisition state per user"
+    },
+    "/users/{uid}/buyHistory/{id}": {
+      "schema": { "$ref": "#/entities/BuyTransaction" },
+      "description": "Historic purchases list per user"
+    },
+    "/users/{uid}/sellHistory/{id}": {
+      "schema": { "$ref": "#/entities/SellTransaction" },
+      "description": "Historic sales list per user"
+    },
+    "/users/{uid}/depositLedger/{id}": {
+      "schema": { "$ref": "#/entities/DepositRecord" },
+      "description": "Liquid assets funding per user"
+    },
+    "/users/{uid}/withdrawalLedger/{id}": {
+      "schema": { "$ref": "#/entities/WithdrawalRecord" },
+      "description": "Drawer withdrawals per user"
+    },
+    "/users/{uid}/wallets/{id}": {
+      "schema": { "$ref": "#/entities/Wallet" },
+      "description": "A payment channel balance sheet"
+    }
+  }
+}

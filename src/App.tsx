@@ -16,7 +16,9 @@ import { BuyLedgerView } from './components/BuyLedgerView';
 import { SellLedgerView } from './components/SellLedgerView';
 import { SettingsView } from './components/SettingsView';
 import { WalletsView } from './components/WalletsView';
-import { BellRing, CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+import { BellRing, CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginView } from './components/LoginView';
 
 const MainScreen: React.FC = () => {
   const { activeView, toasts, removeToast, theme } = useLedger();
@@ -117,10 +119,39 @@ const MainScreen: React.FC = () => {
   );
 };
 
+const AppContent: React.FC = () => {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#070b12] text-slate-100 flex flex-col items-center justify-center p-4 relative font-sans select-none">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30"></div>
+        <div className="text-center space-y-4 relative z-10">
+          <div className="relative inline-flex items-center justify-center">
+            <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
+            <div className="absolute inset-0 rounded-full blur bg-cyan-500/20"></div>
+          </div>
+          <p className="text-[10px] uppercase tracking-widest font-mono text-slate-500">
+            Initializing Encrypted Cloud Sandbox Profile ...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <LoginView onSuccess={() => {}} />;
+  }
+
+  return <MainScreen />;
+};
+
 export default function App() {
   return (
-    <LedgerProvider>
-      <MainScreen />
-    </LedgerProvider>
+    <AuthProvider>
+      <LedgerProvider>
+        <AppContent />
+      </LedgerProvider>
+    </AuthProvider>
   );
 }

@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { useLedger } from '../context/LedgerContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -17,12 +18,15 @@ import {
   Cpu,
   Wallet,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  User
 } from 'lucide-react';
 import { ActiveView } from '../types';
 
 export const Sidebar: React.FC = () => {
   const { activeView, setActiveView, theme } = useLedger();
+  const { currentUser, logOut } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true';
   });
@@ -146,20 +150,48 @@ export const Sidebar: React.FC = () => {
       <div className={`p-4 border-t transition-colors duration-200 ${
         theme === 'light' ? 'border-slate-200' : 'border-slate-800'
       }`}>
-        <div className={`flex items-center rounded-xl transition-all duration-200 ${
+        <div className={`flex flex-col gap-2 rounded-xl transition-all duration-200 ${
           isCollapsed 
-            ? 'justify-center py-2' 
-            : 'gap-3 p-2 border ' + (theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#1e293b]/50 border-slate-800/80')
+            ? 'items-center py-2' 
+            : 'p-3 border ' + (theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#1e293b]/50 border-slate-800/80')
         }`}
-        title="Alusine J. - Senior Architect">
-          <div className="w-8 h-8 rounded-full bg-cyan-600 font-bold flex items-center justify-center text-xs text-white uppercase select-none shrink-0 shadow-sm animate-pulse-slow">
-            AJ
-          </div>
-          {!isCollapsed && (
-            <div>
-              <p className={`text-xs font-semibold ${theme === 'light' ? 'text-slate-800' : 'text-white'}`}>Alusine J.</p>
-              <p className="text-[9px] text-slate-500">Senior Architect</p>
+        title={currentUser?.email || 'P2P Account'}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-cyan-600 font-bold flex items-center justify-center text-xs text-white uppercase select-none shrink-0 shadow-sm animate-pulse-slow">
+              {(currentUser?.email || 'US').slice(0, 2).toUpperCase()}
             </div>
+            {!isCollapsed && (
+              <div className="min-w-0 flex-1">
+                <p className={`text-xs font-semibold truncate ${theme === 'light' ? 'text-slate-800' : 'text-white'}`}>
+                  {(currentUser?.email || 'User').split('@')[0]}
+                </p>
+                <p className="text-[9px] text-slate-500 truncate">{(currentUser?.email || 'P2P Operator')}</p>
+              </div>
+            )}
+          </div>
+
+          {!isCollapsed ? (
+            <button
+              onClick={() => {
+                logOut();
+              }}
+              className="mt-1 w-full px-2 py-1.5 bg-rose-600 hover:bg-rose-700 text-slate-950 hover:text-white font-bold rounded-lg text-[9px] uppercase tracking-widest cursor-pointer transition-all flex items-center justify-center gap-1.5"
+              id="sidebar-sign-out-btn"
+            >
+              <LogOut className="w-3 h-3" />
+              <span>Log Out</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                logOut();
+              }}
+              className="mt-1 p-1 bg-rose-600 hover:bg-rose-700 text-slate-950 hover:text-white rounded-lg cursor-pointer transition-all flex items-center justify-center"
+              title="Secure Log Out"
+              id="sidebar-sign-out-btn-collapsed"
+            >
+              <LogOut className="w-3 h-3" />
+            </button>
           )}
         </div>
 

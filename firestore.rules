@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core validation primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // multi-tenant secure path matching
+    match /users/{uid}/inventory/{id} {
+      allow read, write: if isOwner(uid) && isValidId(id);
+    }
+
+    match /users/{uid}/buyHistory/{id} {
+      allow read, write: if isOwner(uid) && isValidId(id);
+    }
+
+    match /users/{uid}/sellHistory/{id} {
+      allow read, write: if isOwner(uid) && isValidId(id);
+    }
+
+    match /users/{uid}/depositLedger/{id} {
+      allow read, write: if isOwner(uid) && isValidId(id);
+    }
+
+    match /users/{uid}/withdrawalLedger/{id} {
+      allow read, write: if isOwner(uid) && isValidId(id);
+    }
+
+    match /users/{uid}/wallets/{id} {
+      allow read, write: if isOwner(uid) && isValidId(id);
+    }
+  }
+}
