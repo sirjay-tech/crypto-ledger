@@ -31,10 +31,10 @@ export const useP2PJournal = (uid: string | undefined) => {
     setLoading(true);
 
     // Set up paths cleanly with multi-tenant privacy
-    const buyHistoryRef = collection(db, 'users', uid, 'buyHistory');
-    const sellHistoryRef = collection(db, 'users', uid, 'sellHistory');
-    const depositLedgerRef = collection(db, 'users', uid, 'depositLedger');
-    const withdrawalLedgerRef = collection(db, 'users', uid, 'withdrawalLedger');
+    const buyHistoryRef = collection(db, 'users', uid, 'buys');
+    const sellHistoryRef = collection(db, 'users', uid, 'sells');
+    const depositLedgerRef = collection(db, 'users', uid, 'deposits');
+    const withdrawalLedgerRef = collection(db, 'users', uid, 'withdrawals');
     const inventoryRef = collection(db, 'users', uid, 'inventory');
     const walletsRef = collection(db, 'users', uid, 'wallets');
 
@@ -143,22 +143,22 @@ export const useP2PJournal = (uid: string | undefined) => {
   // Write single record helper methods
   const saveBuyRecord = async (record: BuyTransaction) => {
     if (!uid) return;
-    await setDoc(doc(db, 'users', uid, 'buyHistory', record.id), record);
+    await setDoc(doc(db, 'users', uid, 'buys', record.id), record);
   };
 
   const saveSellRecord = async (record: SellTransaction) => {
     if (!uid) return;
-    await setDoc(doc(db, 'users', uid, 'sellHistory', record.id), record);
+    await setDoc(doc(db, 'users', uid, 'sells', record.id), record);
   };
 
   const saveDepositRecord = async (record: DepositRecord) => {
     if (!uid) return;
-    await setDoc(doc(db, 'users', uid, 'depositLedger', record.id), record);
+    await setDoc(doc(db, 'users', uid, 'deposits', record.id), record);
   };
 
   const saveWithdrawalRecord = async (record: WithdrawalRecord) => {
     if (!uid) return;
-    await setDoc(doc(db, 'users', uid, 'withdrawalLedger', record.id), record);
+    await setDoc(doc(db, 'users', uid, 'withdrawals', record.id), record);
   };
 
   const saveInventoryBlock = async (record: InventoryBlock) => {
@@ -185,22 +185,22 @@ export const useP2PJournal = (uid: string | undefined) => {
       const batch = writeBatch(db);
 
       localBuys.forEach((b) => {
-        const itemRef = doc(db, 'users', uid, 'buyHistory', b.id);
+        const itemRef = doc(db, 'users', uid, 'buys', b.id);
         batch.set(itemRef, b);
       });
 
       localSells.forEach((s) => {
-        const itemRef = doc(db, 'users', uid, 'sellHistory', s.id);
+        const itemRef = doc(db, 'users', uid, 'sells', s.id);
         batch.set(itemRef, s);
       });
 
       localDeps.forEach((d) => {
-        const itemRef = doc(db, 'users', uid, 'depositLedger', d.id);
+        const itemRef = doc(db, 'users', uid, 'deposits', d.id);
         batch.set(itemRef, d);
       });
 
       localWiths.forEach((w) => {
-        const itemRef = doc(db, 'users', uid, 'withdrawalLedger', w.id);
+        const itemRef = doc(db, 'users', uid, 'withdrawals', w.id);
         batch.set(itemRef, w);
       });
 
@@ -229,13 +229,13 @@ export const useP2PJournal = (uid: string | undefined) => {
     if (!uid) return;
     try {
       const batch = writeBatch(db);
-      const buySnaps = await getDocs(collection(db, 'users', uid, 'buyHistory'));
+      const buySnaps = await getDocs(collection(db, 'users', uid, 'buys'));
       buySnaps.forEach(docSnap => batch.delete(docSnap.ref));
-      const sellSnaps = await getDocs(collection(db, 'users', uid, 'sellHistory'));
+      const sellSnaps = await getDocs(collection(db, 'users', uid, 'sells'));
       sellSnaps.forEach(docSnap => batch.delete(docSnap.ref));
-      const depSnaps = await getDocs(collection(db, 'users', uid, 'depositLedger'));
+      const depSnaps = await getDocs(collection(db, 'users', uid, 'deposits'));
       depSnaps.forEach(docSnap => batch.delete(docSnap.ref));
-      const withSnaps = await getDocs(collection(db, 'users', uid, 'withdrawalLedger'));
+      const withSnaps = await getDocs(collection(db, 'users', uid, 'withdrawals'));
       withSnaps.forEach(docSnap => batch.delete(docSnap.ref));
       const invSnaps = await getDocs(collection(db, 'users', uid, 'inventory'));
       invSnaps.forEach(docSnap => batch.delete(docSnap.ref));

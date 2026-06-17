@@ -104,64 +104,12 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [theme]);
   
-  // Core States (persisted via localStorage)
-  const [inventory, setInventory] = useState<InventoryBlock[]>(() => {
-    const saved = localStorage.getItem('p2p_inventory');
-    const parsed = saved ? JSON.parse(saved) : INITIAL_INVENTORY;
-    return parsed.map((b: any) => {
-      // Migrate any old large Leone numbers to new denominated Leones (divide by 1000)
-      if (b.coin === 'USDT' && b.price >= 1000) {
-        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
-      }
-      if (b.coin === 'BTC' && b.price >= 50000000) {
-        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
-      }
-      if (b.coin === 'ETH' && b.price >= 5000000) {
-        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
-      }
-      return b;
-    });
-  });
-  
-  const [buyLedger, setBuyLedger] = useState<BuyTransaction[]>(() => {
-    const saved = localStorage.getItem('p2p_buy_ledger');
-    const parsed = saved ? JSON.parse(saved) : INITIAL_BUYS;
-    return parsed.map((b: any) => {
-      // Migrate any old large Leone numbers to new denominated Leones (divide by 1000)
-      if (b.coin === 'USDT' && b.price >= 1000) {
-        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
-      }
-      if (b.coin === 'BTC' && b.price >= 50000000) {
-        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
-      }
-      if (b.coin === 'ETH' && b.price >= 5000000) {
-        return { ...b, price: b.price / 1000, totalCost: b.totalCost / 1000 };
-      }
-      return b;
-    });
-  });
-  
-  const [sellLedger, setSellLedger] = useState<SellTransaction[]>(() => {
-    const saved = localStorage.getItem('p2p_sell_ledger');
-    const parsed = saved ? JSON.parse(saved) : INITIAL_SELLS;
-    return parsed.map((s: any) => {
-      // Migrate any old large Leone numbers to new denominated Leones (divide by 1000)
-      if (s.price >= 1000) {
-        return { ...s, price: s.price / 1000, totalSale: s.totalSale / 1000, profit: s.profit / 1000 };
-      }
-      return s;
-    });
-  });
-
-  const [depositLedger, setDepositLedger] = useState<DepositRecord[]>(() => {
-    const saved = localStorage.getItem('p2p_deposit_ledger');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [withdrawalLedger, setWithdrawalLedger] = useState<WithdrawalRecord[]>(() => {
-    const saved = localStorage.getItem('p2p_withdrawal_ledger');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Core States (memory-only when logged out, real-time Firestore when logged in)
+  const [inventory, setInventory] = useState<InventoryBlock[]>(INITIAL_INVENTORY);
+  const [buyLedger, setBuyLedger] = useState<BuyTransaction[]>(INITIAL_BUYS);
+  const [sellLedger, setSellLedger] = useState<SellTransaction[]>(INITIAL_SELLS);
+  const [depositLedger, setDepositLedger] = useState<DepositRecord[]>([]);
+  const [withdrawalLedger, setWithdrawalLedger] = useState<WithdrawalRecord[]>([]);
 
   const [settings, setSettings] = useState<AppSetting[]>(() => {
     const saved = localStorage.getItem('p2p_settings');
@@ -174,36 +122,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   });
 
-  const [wallets, setWallets] = useState<Wallet[]>(() => {
-    const saved = localStorage.getItem('p2p_wallets');
-    let parsed = saved ? JSON.parse(saved) : INITIAL_WALLETS;
-    // Purge unwanted legacy wallets automatically
-    parsed = parsed.filter((w: any) => 
-      w.name.toLowerCase() !== 'usdt funding' && 
-      w.name.toLowerCase() !== 'apex otc'
-    );
-    if (!parsed.some((w: any) => w.name.toLowerCase() === 'orange money')) {
-      parsed.unshift({ name: 'Orange Money', balance: 0 });
-    }
-
-    // Explicitly reset the Orange Money balance to 0 once, as requested by user
-    if (!localStorage.getItem('p2p_orange_money_zeroed_v1')) {
-      parsed = parsed.map((w: any) => {
-        if (w.name.toLowerCase() === 'orange money') {
-          return { ...w, balance: 0 };
-        }
-        return w;
-      });
-      localStorage.setItem('p2p_orange_money_zeroed_v1', 'true');
-    }
-
-    return parsed.map((w: any) => {
-      if (w.balance >= 1000000) {
-        return { ...w, balance: w.balance / 1000 };
-      }
-      return w;
-    });
-  });
+  const [wallets, setWallets] = useState<Wallet[]>(INITIAL_WALLETS);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
@@ -216,50 +135,13 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const activeWithdrawalLedger = currentUser ? fb.withdrawalLedger : withdrawalLedger;
   const activeWallets = currentUser ? fb.wallets : wallets;
 
-  // Auto bootstrap local storage data to Cloud Firestore if Cloud Firestore is completely empty and currentUser recently logged in!
-  useEffect(() => {
-    if (currentUser && !fb.loading) {
-      const alreadySynced = localStorage.getItem(`p2p_bulk_synced_${currentUser.uid}`);
-      if (!alreadySynced && fb.buyHistory.length === 0 && fb.sellHistory.length === 0 && fb.depositLedger.length === 0 && fb.withdrawalLedger.length === 0) {
-        fb.bulkUploadToCloud(buyLedger, sellLedger, depositLedger, withdrawalLedger, inventory, wallets).then(() => {
-          localStorage.setItem(`p2p_bulk_synced_${currentUser.uid}`, 'true');
-          addToast('Your existing offline records have been seamlessly migrated to the Cloud secure database!', 'success');
-        });
-      }
-    }
-  }, [currentUser, fb.loading]);
-
   // Supported coins checklist
   const supportedCoins = INITIAL_COINS;
 
   // Sync to local storage on adjustments
   useEffect(() => {
-    localStorage.setItem('p2p_inventory', JSON.stringify(inventory));
-  }, [inventory]);
-
-  useEffect(() => {
-    localStorage.setItem('p2p_buy_ledger', JSON.stringify(buyLedger));
-  }, [buyLedger]);
-
-  useEffect(() => {
-    localStorage.setItem('p2p_sell_ledger', JSON.stringify(sellLedger));
-  }, [sellLedger]);
-
-  useEffect(() => {
-    localStorage.setItem('p2p_deposit_ledger', JSON.stringify(depositLedger));
-  }, [depositLedger]);
-
-  useEffect(() => {
-    localStorage.setItem('p2p_withdrawal_ledger', JSON.stringify(withdrawalLedger));
-  }, [withdrawalLedger]);
-
-  useEffect(() => {
     localStorage.setItem('p2p_settings', JSON.stringify(settings));
   }, [settings]);
-
-  useEffect(() => {
-    localStorage.setItem('p2p_wallets', JSON.stringify(wallets));
-  }, [wallets]);
 
   // Toast System Actions
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -799,13 +681,13 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   return (
     <LedgerContext.Provider value={{
-      inventory,
-      buyLedger,
-      sellLedger,
-      depositLedger,
-      withdrawalLedger,
+      inventory: activeInventory,
+      buyLedger: activeBuyLedger,
+      sellLedger: activeSellLedger,
+      depositLedger: activeDepositLedger,
+      withdrawalLedger: activeWithdrawalLedger,
       settings,
-      wallets,
+      wallets: activeWallets,
       metrics,
       activeView,
       setActiveView,
